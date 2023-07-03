@@ -84,7 +84,7 @@ function getPurchasedServers(ns) {
 }
 
 export async function main(ns) {
-  ns.tprint(`[${localeHHMMSS()}] Starting playerServers.js`)
+  ns.tprint(`[${localeHHMMSS()}] Starting playerServers.ns`)
 
   settings.maxGbRam = ns.getPurchasedServerMaxRam()
   settings.maxPlayerServers = ns.getPurchasedServerLimit()
@@ -103,21 +103,20 @@ export async function main(ns) {
     let action = purchasedServers.length < settings.maxPlayerServers ? settings.actions.BUY : settings.actions.UPGRADE
 
     if (action == settings.actions.BUY) {
-      let smallestCurrentServer = purchasedServers.length ? ns.getServerMaxRam(purchasedServers[0]) : 0
+      let smallestCurrentServer = purchasedServers.length ? ns.getServerMaxRam((purchasedServers[0])) : 0
       let targetRam = Math.max(settings.minGbRam, smallestCurrentServer)
 
       if (targetRam === settings.minGbRam) {
-        while (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= targetRam * settings.gbRamCost * settings.maxPlayerServers) {
+        while (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= ns.getPurchasedServerCost(targetRam) * settings.maxPlayerServers) {
           targetRam *= 2
         }
 
         targetRam /= 2
       }
-
       targetRam = Math.max(settings.minGbRam, targetRam)
       targetRam = Math.min(targetRam, settings.maxGbRam)
 
-      if (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= targetRam * settings.gbRamCost) {
+      if (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= ns.getPurchasedServerCost(targetRam)) {
         let hostname = `pserv-${targetRam}-${createUUID()}`
         hostname = ns.purchaseServer(hostname, targetRam)
 
@@ -129,8 +128,8 @@ export async function main(ns) {
         }
       }
     } else {
-      let smallestCurrentServer = Math.max(ns.getServerMaxRam(purchasedServers[0]), ns.getServerUsedRam(purchasedServers[0]), settings.minGbRam)
-      let biggestCurrentServer = (ns.getServerMaxRam(purchasedServers[purchasedServers.length - 1]), ns.getServerUsedRam(purchasedServers[purchasedServers.length - 1]))
+      let smallestCurrentServer = Math.max(ns.getServerMaxRam((purchasedServers[0])), settings.minGbRam)
+      let biggestCurrentServer = ns.getServerMaxRam(purchasedServers[purchasedServers.length - 1])
       let targetRam = biggestCurrentServer
 
       if (smallestCurrentServer === settings.maxGbRam) {
@@ -140,7 +139,7 @@ export async function main(ns) {
       }
 
       if (smallestCurrentServer === biggestCurrentServer) {
-        while (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= targetRam * settings.gbRamCost) {
+        while (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= ns.getPurchasedServerCost(targetRam)) {
           targetRam *= 4
         }
 
@@ -148,7 +147,6 @@ export async function main(ns) {
       }
 
       targetRam = Math.min(targetRam, settings.maxGbRam)
-
       purchasedServers = getPurchasedServers(ns)
       if (targetRam > ns.getServerMaxRam(purchasedServers[0])) {
         didChange = true
@@ -156,8 +154,8 @@ export async function main(ns) {
           didChange = false
           purchasedServers = getPurchasedServers(ns)
 
-          if (targetRam > ns.getServerMaxRam(purchasedServers[0])) {
-            if (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= targetRam * settings.gbRamCost) {
+          if (targetRam > ns.getServerMaxRam((purchasedServers[0]))) {
+            if (ns.getServerMoneyAvailable('home') * settings.totalMoneyAllocation >= ns.getPurchasedServerCost(targetRam)) {
               let hostname = `pserv-${targetRam}-${createUUID()}`
 
               await ns.killall(purchasedServers[0])
@@ -171,6 +169,8 @@ export async function main(ns) {
 
                   updateServer(ns, serverMap, hostname)
                   didChange = true
+                }else if (hostname == "" || hostname == null) {
+                  ns.tprint(`[${localeHHMMSS()}] Failed to upgrade server`)
                 }
               }
             }
